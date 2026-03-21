@@ -1,10 +1,11 @@
-from ..schemas import PostCreate, Post
+from ..schemas import PostCreate, Post, Postout
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, status, responses
 from sqlalchemy.orm import Session
 from .. import modals
 from ..database import get_db
 from ..oauth2 import get_current_user
 from typing import Optional
+from sqlalchemy import func
 
 router = APIRouter(
     prefix="/posts",
@@ -12,9 +13,14 @@ router = APIRouter(
 )
 
 
-@router.get("/", response_model=list[Post])
+# @router.get("/", response_model=list[Post])
+@router.get("/", response_model=list[Postout])
 def get_posts(db: Session = Depends(get_db), limit: int = 10, skip: int = 0, search: Optional[str] = ""):
-    posts = db.query(modals.Post).filter(modals.Post.title.contains(search)).limit(limit).offset(skip).all()
+    # posts = db.query(modals.Post).filter(modals.Post.title.contains(search)).limit(limit).offset(skip).all()
+    posts = db.query(modals.Post, func.count(modals.votes.post_id).label("votes")).join(modals.votes, modals.votes.post_id == modals.Post.id, isouter=True).group_by(modals.Post.id)
+    posts = posts.filter(modals.Post.title.contains(search)).limit(limit).offset(skip).all()
+    posts = list(map(lambda x : x._mapping, posts)) 
+
     return posts
 
 @router.post("/", status_code=status.HTTP_201_CREATED, response_model=Post)
@@ -26,9 +32,12 @@ def create_post(post: PostCreate, db: Session = Depends(get_db), user = Depends(
     db.refresh(new_post)
     return new_post
 
-@router.get("/{id}", response_model=Post)
+@router.get("/{id}", response_model=Postout)
 def get_post(id: int, db: Session = Depends(get_db)):
-    post = db.query(modals.Post).filter(modals.Post.id == id).first()
+
+    post = db.query(modals.Post, func.count(modals.votes.post_id).label("votes")).join(modals.votes, modals.votes.post_id == modals.Post.id, isouter=True).group_by(modals.Post.id).first()
+    
+    # post = db.query(modals.Post).filter(modals.Post.id == id).first()
     if not post:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"post with id: {id} was not found")
     return post

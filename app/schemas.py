@@ -24,14 +24,18 @@ class PostBase(BaseModel):
 class PostCreate(PostBase):
     pass
 
-
-
 class Post(BaseModel):
     title: str
     content: str
     published: bool = True
     owner_id: int
     owner: UserOut
+    class Config:
+        from_attributes = True
+
+class Postout(BaseModel):
+    Post: Post
+    votes: int
     class Config:
         from_attributes = True
 
