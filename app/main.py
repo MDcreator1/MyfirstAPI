@@ -27,6 +27,6 @@ app.include_router(votes.router)
 @app.get("/")
 def get_posts():
     result = {
-        "detail": "hello world"
+        "detail": "hello world, this is the aera of new creations!"
     }
     return result
